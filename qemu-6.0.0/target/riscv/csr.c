@@ -1370,6 +1370,29 @@ int riscv_csrrw_debug(CPURISCVState *env, int csrno, target_ulong *ret_value,
     return ret;
 }
 
+#ifdef CONFIG_NPU
+#define CSR_READ(x)     \
+    static int read_##x(CPURISCVState *env, int csrno, target_ulong *val) \
+    {                   \
+        *val = env->x;  \
+        return 0;       \
+    }                   
+
+#define CSR_WRITE(x)    \
+    static int write_##x(CPURISCVState *env, int csrno, target_ulong val) \
+    {                   \
+        env->x = val;   \
+        return 0;       \
+    }                   
+
+#define CSR_WR_FUNC(x)  \
+    CSR_READ(x) \
+    CSR_WRITE(x)
+
+CSR_WR_FUNC(fprint_addr )
+CSR_WR_FUNC(fprint_len  )
+#endif
+
 /* Control and Status Register function table */
 riscv_csr_operations csr_ops[CSR_TABLE_SIZE] = {
     /* User Floating-Point CSRs */
@@ -1645,4 +1668,8 @@ riscv_csr_operations csr_ops[CSR_TABLE_SIZE] = {
     [CSR_MHPMCOUNTER30H] = { "mhpmcounter30h", any32,  read_zero },
     [CSR_MHPMCOUNTER31H] = { "mhpmcounter31h", any32,  read_zero },
 #endif /* !CONFIG_USER_ONLY */
+#ifdef CONFIG_NPU
+    [CSR_FPRINT_ADDR]    =  {"fprintaddr", any32, read_fprint_addr, write_fprint_addr},
+    [CSR_FPRINT_LEN]     =  {"fprintlen",  any32, read_fprint_len, write_fprint_len},
+#endif
 };

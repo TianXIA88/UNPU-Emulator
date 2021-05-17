@@ -187,9 +187,8 @@ static void rv32_sifive_u_cpu_init(Object *obj)
     set_misa(env, RV32 | RVI | RVM | RVA | RVF | RVD | RVC | RVS | RVU);
     set_priv_version(env, PRIV_VERSION_1_10_0);
     #ifdef CONFIG_NPU
-        npu_log("Init CPU\n\r");
-        for(int i=0; i<NVEC_REG_LENGTH; i++)
-            env->nvpr[0].flags[i] = 1;
+        // Init all initial local reg/mem values here
+        npu_log("Init U CPU\n\r");
     #endif
 }
 
@@ -200,9 +199,12 @@ static void rv32_sifive_e_cpu_init(Object *obj)
     set_priv_version(env, PRIV_VERSION_1_10_0);
     qdev_prop_set_bit(DEVICE(obj), "mmu", false);
     #ifdef CONFIG_NPU
-        npu_log("Init CPU\n\r");
+        // Init all initial local reg/mem values here
+        npu_log("Init E CPU\n\r");
         for(int i=0; i<NVEC_REG_LENGTH; i++)
-            env->nvpr[0].flags[i] = 1;
+            env->nvmr[0].flags[i] = 0;
+        for(int i=0; i<NVEC_REG_LENGTH; i++)
+            env->nvmr[1].flags[i] = 1;
     #endif
 }
 

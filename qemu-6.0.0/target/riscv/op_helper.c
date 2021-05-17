@@ -251,7 +251,12 @@ target_ulong helper_hyp_hlvx_wu(CPURISCVState *env, target_ulong address)
 #ifdef CONFIG_NPU
 void helper_necho(CPURISCVState *env)
 {
+    int tmp;
     npu_log("echo at pc=%x\n\r", env->pc);
-    npu_log("VPRO=%d\n\r", env->nvpr[0].flags[0]);
+    npu_log("check vmr: VMRO=%d\n\r", env->nvmr[0].flags[0]);
+    cpu_stl_data(env, 0X1000000, 0xdeadbeef);
+    tmp = cpu_ldl_data(env, 0x1000000);
+    npu_log("check shared memory: [0]=0x%x\n\r", tmp);
+    cpu_stl_data(env, 0X1000000, 0);
 }
 #endif

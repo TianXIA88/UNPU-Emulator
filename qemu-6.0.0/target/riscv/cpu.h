@@ -100,12 +100,15 @@ enum {
 #define MAX_RISCV_PMPS (16)
 
 #ifdef CONFIG_NPU
-    #define NVEC_REG_LENGTH 64
-    #define NVEC_REG_NUM    16
+    #define NVEC_REG_LENGTH (64)
+    #define NVEC_REG_NUM    (16)
+    #define LMFM_SIZE_BYTE  (1024 * 64)
+    #define LMWT_SIZE_BYTE  (1024 * 64)
+    #define LMBC_SIZE_BYTE  (1024 * 8)
 
     typedef struct {int32_t words[NVEC_REG_LENGTH];} nvreg_i_t;
     typedef struct {char exp[NVEC_REG_LENGTH];} nvreg_e_t;
-    typedef struct {bool flags[NVEC_REG_LENGTH];} nvpreg_t;
+    typedef struct {bool flags[NVEC_REG_LENGTH];} nvmreg_t;
 #endif
 
 typedef struct CPURISCVState CPURISCVState;
@@ -124,7 +127,14 @@ struct CPURISCVState {
     #ifdef CONFIG_NPU
         nvreg_i_t nvr_i[NVEC_REG_NUM]; 
         nvreg_e_t nvr_e[NVEC_REG_NUM];
-        nvpreg_t nvpr[NVEC_REG_NUM];
+        nvmreg_t nvmr[NVEC_REG_NUM];
+        unsigned char lmfm[LMFM_SIZE_BYTE];
+        unsigned char lmwt[LMWT_SIZE_BYTE];
+        unsigned char lmbc[LMBC_SIZE_BYTE];
+
+        /* NPU CSR */
+        target_ulong fprint_addr;
+        target_ulong fprint_len;
     #endif
 
     target_ulong gpr[32];
