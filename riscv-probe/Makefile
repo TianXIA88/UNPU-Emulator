@@ -1,4 +1,4 @@
-CROSS_COMPILE      ?= riscv64-unknown-elf-
+CROSS_COMPILE      ?= riscv32-unknown-elf-
 
 AR                 = $(CROSS_COMPILE)ar
 

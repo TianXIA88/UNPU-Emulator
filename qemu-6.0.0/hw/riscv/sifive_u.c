@@ -66,6 +66,9 @@
 static const MemMapEntry sifive_u_memmap[] = {
     [SIFIVE_U_DEV_DEBUG] =    {        0x0,      0x100 },
     [SIFIVE_U_DEV_MROM] =     {     0x1000,     0xf000 },
+#ifdef CONFIG_NPU
+    [MANASI_NPU_SHR_MEM] =    {  0X1000000,    0X40000 }, // 256KB
+#endif
     [SIFIVE_U_DEV_CLINT] =    {  0x2000000,    0x10000 },
     [SIFIVE_U_DEV_L2CC] =     {  0x2010000,     0x1000 },
     [SIFIVE_U_DEV_PDMA] =     {  0x3000000,   0x100000 },
@@ -509,6 +512,15 @@ static void sifive_u_machine_init(MachineState *machine)
                            machine->ram_size, &error_fatal);
     memory_region_add_subregion(system_memory, memmap[SIFIVE_U_DEV_DRAM].base,
                                 main_mem);
+    
+    #ifdef CONFIG_NPU
+    /* register NPU Shared Memory*/
+    MemoryRegion *shrd_mem = g_new(MemoryRegion, 1);
+    memory_region_init_ram(shrd_mem, NULL, "riscv.sifive.u.shared_mem",
+                           memmap[MANASI_NPU_SHR_MEM].size, &error_fatal);
+    memory_region_add_subregion(system_memory, memmap[MANASI_NPU_SHR_MEM].base,
+                                shrd_mem);
+    #endif
 
     /* register QSPI0 Flash */
     memory_region_init_ram(flash0, NULL, "riscv.sifive.u.flash0",

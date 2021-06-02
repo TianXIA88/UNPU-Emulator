@@ -362,6 +362,11 @@
 #define CSR_MDBASE          0x384
 #define CSR_MDBOUND         0x385
 
+#ifdef CONFIG_NPU
+    #define CSR_FPRINT_ADDR 0xf00
+    #define CSR_FPRINT_LEN  0xf01
+#endif
+
 /* mstatus CSR bits */
 #define MSTATUS_UIE         0x00000001
 #define MSTATUS_SIE         0x00000002
