@@ -63,6 +63,8 @@ static void *mttcg_cpu_thread_fn(void *arg)
     /* process any pending work */
     cpu->exit_request = 1;
 
+    // npu_log("mttcg_cpu_thread_fn: cpu thread=%d\n\r", cpu->thread_id);
+
     do {
         if (cpu_can_run(cpu)) {
             int r;

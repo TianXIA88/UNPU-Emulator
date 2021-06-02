@@ -28,6 +28,7 @@
 void QEMU_NORETURN riscv_raise_exception(CPURISCVState *env,
                                           uint32_t exception, uintptr_t pc)
 {
+    // npu_log("riscv_raise_exception: pc=%lx expt=%d\n\r", pc, exception);
     CPUState *cs = env_cpu(env);
     cs->exception_index = exception;
     cpu_loop_exit_restore(cs, pc);
@@ -35,6 +36,7 @@ void QEMU_NORETURN riscv_raise_exception(CPURISCVState *env,
 
 void helper_raise_exception(CPURISCVState *env, uint32_t exception)
 {
+    // npu_log("helper_raise_exception: excp=%d GETPC=%lx env->pc=%x\n\r", exception, GETPC(), env->pc);
     riscv_raise_exception(env, exception, 0);
 }
 
@@ -248,10 +250,17 @@ target_ulong helper_hyp_hlvx_wu(CPURISCVState *env, target_ulong address)
 
 #endif /* !CONFIG_USER_ONLY */
 
+
 #ifdef CONFIG_NPU
+#define npu_raise_exception()  {riscv_raise_exception(env, RISCV_EXCP_NPU_COMPUTE_FAULT, GETPC());}
+
+int xx = 0;
+
 void helper_necho(CPURISCVState *env)
 {
     npu_log("echo at pc=%x\n\r", env->pc);
     npu_log("VPRO=%d\n\r", env->nvpr[0].flags[0]);
+    if(xx++ == 0)
+        npu_raise_exception();
 }
 #endif

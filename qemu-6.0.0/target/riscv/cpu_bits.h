@@ -537,7 +537,7 @@
 #define RISCV_EXCP_STORE_AMO_ADDR_MIS            0x6
 #define RISCV_EXCP_STORE_AMO_ACCESS_FAULT        0x7
 #define RISCV_EXCP_U_ECALL                       0x8
-#define RISCV_EXCP_S_ECALL                      0x9
+#define RISCV_EXCP_S_ECALL                       0x9
 #define RISCV_EXCP_VS_ECALL                      0xa
 #define RISCV_EXCP_M_ECALL                       0xb
 #define RISCV_EXCP_INST_PAGE_FAULT               0xc /* since: priv-1.10.0 */
@@ -548,6 +548,11 @@
 #define RISCV_EXCP_LOAD_GUEST_ACCESS_FAULT       0x15
 #define RISCV_EXCP_VIRT_INSTRUCTION_FAULT        0x16
 #define RISCV_EXCP_STORE_GUEST_AMO_ACCESS_FAULT  0x17
+
+#ifdef CONFIG_NPU
+#define RISCV_EXCP_NPU_COMPUTE_FAULT             0X18
+#endif
+
 
 #define RISCV_EXCP_INT_FLAG                0x80000000
 #define RISCV_EXCP_INT_MASK                0x7fffffff

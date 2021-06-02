@@ -910,6 +910,8 @@ void riscv_cpu_do_interrupt(CPUState *cs)
     target_ulong htval = 0;
     target_ulong mtval2 = 0;
 
+    // npu_log("riscv_cpu_do_interrupt: env->pc=%lx cause=%d\n\r", env->pc, cause);
+
     if  (cause == RISCV_EXCP_SEMIHOST) {
         if (env->priv >= PRV_S) {
             env->gpr[xA0] = do_common_semihosting(cs);
@@ -1058,6 +1060,7 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         env->mtval2 = mtval2;
         env->pc = (env->mtvec >> 2 << 2) +
             ((async && (env->mtvec & 3) == 1) ? cause * 4 : 0);
+        // npu_log("riscv_cpu_do_interrupt: handle the trap in M-mode: mepc=%x pc=%x\n\r", env->mepc, env->pc);
         riscv_cpu_set_mode(env, PRV_M);
     }
 

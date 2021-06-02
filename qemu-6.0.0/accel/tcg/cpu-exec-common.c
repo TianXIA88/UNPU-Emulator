@@ -64,6 +64,7 @@ void cpu_reloading_memory_map(void)
 
 void cpu_loop_exit(CPUState *cpu)
 {
+    // npu_log("cpu_loop_exit\n\r");
     /* Undo the setting in cpu_tb_exec.  */
     cpu->can_do_io = 1;
     siglongjmp(cpu->jmp_env, 1);
@@ -71,6 +72,7 @@ void cpu_loop_exit(CPUState *cpu)
 
 void cpu_loop_exit_restore(CPUState *cpu, uintptr_t pc)
 {
+    // npu_log("cpu_loop_exit_restore: pc=%ld\n\r", pc);
     if (pc) {
         cpu_restore_state(cpu, pc, true);
     }

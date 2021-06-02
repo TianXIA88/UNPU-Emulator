@@ -109,6 +109,7 @@ static void gen_check_nanbox_s(TCGv_i64 out, TCGv_i64 in)
 
 static void generate_exception(DisasContext *ctx, int excp)
 {
+    npu_log("generate_exception: excp=%d\n\r", excp);
     tcg_gen_movi_tl(cpu_pc, ctx->base.pc_next);
     TCGv_i32 helper_tmp = tcg_const_i32(excp);
     gen_helper_raise_exception(cpu_env, helper_tmp);
@@ -155,6 +156,7 @@ static void lookup_and_goto_ptr(DisasContext *ctx)
 
 static void gen_exception_illegal(DisasContext *ctx)
 {
+    npu_log("gen_exception_illegal\n\r");
     generate_exception(ctx, RISCV_EXCP_ILLEGAL_INST);
 }
 
@@ -597,6 +599,7 @@ static uint32_t opcode_at(DisasContextBase *dcbase, target_ulong pc)
 #ifdef CONFIG_NPU
 static void decode_npu(DisasContext *ctx, CPURISCVState *env, uint32_t insn){
         int f = insn >> 28;
+        npu_log("decode_npu: env->pc=%lx ctx->pc=%lx\n\r", env->pc, ctx->base.pc_next);
         switch (f)
         {
             case 0xd: // deadbeef
@@ -627,13 +630,13 @@ static void decode_opc(CPURISCVState *env, DisasContext *ctx, uint16_t opcode)
         opcode32 = deposit32(opcode32, 16, 16,
                              translator_lduw(env, ctx->base.pc_next + 2));
         ctx->pc_succ_insn = ctx->base.pc_next + 4;
-        #ifdef CONFIG_NPU // create some back-doors for NPU
-            if( (opcode32 & 0x0fffffff) == 0x0eadbeef){
-                npu_log("YOU OPEN THE BACK DOOR\n\r");
-                decode_npu(ctx, env, opcode32);
-                return;
-            }
-        #endif
+#ifdef CONFIG_NPU // create some back-doors for NPU
+        if( (opcode32 & 0x0fffffff) == 0x0eadbeef){
+            npu_log("YOU OPEN THE BACK DOOR\n\r");
+            decode_npu(ctx, env, opcode32);
+            return;
+        }
+#endif
         if (!decode_insn32(ctx, opcode32)) {
             gen_exception_illegal(ctx);
         }

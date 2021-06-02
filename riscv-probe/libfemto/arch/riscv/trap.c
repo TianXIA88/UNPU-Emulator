@@ -4,6 +4,7 @@
 #include "arch/riscv/trap.h"
 #include "arch/riscv/encoding.h"
 #include "arch/riscv/machine.h"
+#include "arch/riscv/csr.h"
 
 static trap_fn tfn = 0;
 
@@ -60,6 +61,8 @@ void trap_handler(uintptr_t* regs, uintptr_t mcause, uintptr_t mepc)
     if (tfn) {
         tfn(regs, mcause, mepc);
     } else {
-        die("machine mode: unhandlable trap %d @ %p", mcause, mepc);
+        // write_csr_enum(csr_mepc, mepc + 4);
+        printf("machine mode: skip unhandlable trap %d @ %p\n\r", mcause, mepc);
+        // die("machine mode: unhandlable trap %d @ %p", mcause, mepc);
     }
 }

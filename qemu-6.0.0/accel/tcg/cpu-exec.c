@@ -487,6 +487,7 @@ static inline void cpu_handle_debug_exception(CPUState *cpu)
 
 static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
 {
+    // npu_log("cpu_handle_exception: exception_index=%d\n\r", cpu->exception_index);
     if (cpu->exception_index < 0) {
 #ifndef CONFIG_USER_ONLY
         if (replay_has_exception()
@@ -519,6 +520,7 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
         return true;
 #else
         if (replay_exception()) {
+            // npu_log("cpu_handle_exception: replay_exception\n\r");
             CPUClass *cc = CPU_GET_CLASS(cpu);
             qemu_mutex_lock_iothread();
             cc->tcg_ops->do_interrupt(cpu);
@@ -563,6 +565,7 @@ static inline bool need_replay_interrupt(int interrupt_request)
 static inline bool cpu_handle_interrupt(CPUState *cpu,
                                         TranslationBlock **last_tb)
 {
+    // npu_log("cpu_handle_interrupt\n\r");
     CPUClass *cc = CPU_GET_CLASS(cpu);
 
     /* Clear the interrupt flag now since we're processing
@@ -573,6 +576,7 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
     qatomic_mb_set(&cpu_neg(cpu)->icount_decr.u16.high, 0);
 
     if (unlikely(qatomic_read(&cpu->interrupt_request))) {
+        npu_log("cpu_handle_interrupt: REAL IRQ\n\r");
         int interrupt_request;
         qemu_mutex_lock_iothread();
         interrupt_request = cpu->interrupt_request;
@@ -669,8 +673,10 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 {
     int32_t insns_left;
 
+    // npu_log("cpu_loop_exec_tb: PC=%lx (Thread %d)\n\r", tb->pc, cpu->thread_id);
     trace_exec_tb(tb, tb->pc);
     tb = cpu_tb_exec(cpu, tb, tb_exit);
+    // npu_log("exit cause=%lx\n\r", *tb_exit);
     if (*tb_exit != TB_EXIT_REQUESTED) {
         *last_tb = tb;
         return;
@@ -714,6 +720,7 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 
 int cpu_exec(CPUState *cpu)
 {
+    // npu_log("cpu_exec: main execution loop: thread=%d\n\r", cpu->thread_id);
     CPUClass *cc = CPU_GET_CLASS(cpu);
     int ret;
     SyncClocks sc = { 0 };
@@ -774,6 +781,8 @@ int cpu_exec(CPUState *cpu)
         assert_no_pages_locked();
     }
 
+    // npu_log("=======while loop========\n\r");
+
     /* if an exception is pending, we execute it here */
     while (!cpu_handle_exception(cpu, &ret)) {
         TranslationBlock *last_tb = NULL;
@@ -800,6 +809,7 @@ int cpu_exec(CPUState *cpu)
                if the guest is in advance */
             align_clocks(&sc, cpu);
         }
+        // npu_log("...\n\r");
     }
 
     cpu_exec_exit(cpu);
