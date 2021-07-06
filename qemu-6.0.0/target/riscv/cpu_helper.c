@@ -86,6 +86,7 @@ bool riscv_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
         int interruptno = riscv_cpu_local_irq_pending(env);
         if (interruptno >= 0) {
             cs->exception_index = RISCV_EXCP_INT_FLAG | interruptno;
+            npu_log("riscv_cpu_exec_interrupt: exception_index=%x\n\r", cs->exception_index);
             riscv_cpu_do_interrupt(cs);
             return true;
         }
@@ -239,6 +240,7 @@ uint32_t riscv_cpu_update_mip(RISCVCPU *cpu, uint32_t mask, uint32_t value)
     env->mip = (env->mip & ~mask) | (value & mask);
 
     if (env->mip) {
+        npu_log("riscv_cpu_update_mip (pc=%x mip=%x)\n\r", env->pc, env->mip);
         cpu_interrupt(cs, CPU_INTERRUPT_HARD);
     } else {
         cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD);
@@ -910,7 +912,7 @@ void riscv_cpu_do_interrupt(CPUState *cs)
     target_ulong htval = 0;
     target_ulong mtval2 = 0;
 
-    // npu_log("riscv_cpu_do_interrupt: env->pc=%lx cause=%d\n\r", env->pc, cause);
+    npu_log("riscv_cpu_do_interrupt: env->pc=%lx cause=%x \n\r", env->pc, cs->exception_index);
 
     if  (cause == RISCV_EXCP_SEMIHOST) {
         if (env->priv >= PRV_S) {
@@ -1060,7 +1062,8 @@ void riscv_cpu_do_interrupt(CPUState *cs)
         env->mtval2 = mtval2;
         env->pc = (env->mtvec >> 2 << 2) +
             ((async && (env->mtvec & 3) == 1) ? cause * 4 : 0);
-        // npu_log("riscv_cpu_do_interrupt: handle the trap in M-mode: mepc=%x pc=%x\n\r", env->mepc, env->pc);
+        npu_log("riscv_cpu_do_interrupt: handle the trap in M-mode: mepc=%x pc=%x\n\r", env->mepc, env->pc);
+        exit(-1);
         riscv_cpu_set_mode(env, PRV_M);
     }
 

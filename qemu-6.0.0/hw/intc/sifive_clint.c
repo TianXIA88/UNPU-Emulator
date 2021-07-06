@@ -28,6 +28,7 @@
 #include "hw/qdev-properties.h"
 #include "hw/intc/sifive_clint.h"
 #include "qemu/timer.h"
+#include "qemu/log.h"
 
 static uint64_t cpu_riscv_read_rtc(uint32_t timebase_freq)
 {
@@ -137,6 +138,7 @@ static void sifive_clint_write(void *opaque, hwaddr addr, uint64_t value,
         if (!env) {
             error_report("clint: invalid timecmp hartid: %zu", hartid);
         } else if ((addr & 0x3) == 0) {
+            npu_log("MSIP write %d at 0x%x (pc=%x mstatus=%x mie=%x)\n\r", value, addr, env->pc, env->mstatus, env->mie);
             riscv_cpu_update_mip(RISCV_CPU(cpu), MIP_MSIP, BOOL_TO_MASK(value));
         } else {
             error_report("clint: invalid sip write: %08x", (uint32_t)addr);

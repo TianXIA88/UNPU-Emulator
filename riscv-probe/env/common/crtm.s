@@ -36,6 +36,7 @@ park:
     .align 2
 trap_vector:
     # Save registers.
+    # .word   0xdeadbeef
     addi    sp, sp, -CONTEXT_SIZE
     sxsp    ra, 0
     sxsp    a0, 1

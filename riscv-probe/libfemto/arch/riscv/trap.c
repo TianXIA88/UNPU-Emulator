@@ -59,10 +59,11 @@ void set_trap_fn(trap_fn fn)
 void trap_handler(uintptr_t* regs, uintptr_t mcause, uintptr_t mepc)
 {
     if (tfn) {
+        printf("machine mode: trap %x @ %p\n\r", mcause, mepc);
         tfn(regs, mcause, mepc);
     } else {
         // write_csr_enum(csr_mepc, mepc + 4);
-        printf("machine mode: skip unhandlable trap %d @ %p\n\r", mcause, mepc);
-        // die("machine mode: unhandlable trap %d @ %p", mcause, mepc);
+        // printf("machine mode: skip unhandlable trap %d @ %p\n\r", mcause, mepc);
+        die("machine mode: unhandlable trap %x @ %p", mcause, mepc);
     }
 }

@@ -77,6 +77,9 @@ int tcg_cpus_exec(CPUState *cpu)
 /* mask must never be zero, except for A20 change call */
 void tcg_handle_interrupt(CPUState *cpu, int mask)
 {
+    RISCVCPU *cpulog = RISCV_CPU(cpu);
+    CPURISCVState *envlog = &cpulog->env;
+    // npu_log("tcg_handle_interrupt (pc=%x)\n\r", envlog->pc);
     g_assert(qemu_mutex_iothread_locked());
 
     cpu->interrupt_request |= mask;
@@ -86,6 +89,7 @@ void tcg_handle_interrupt(CPUState *cpu, int mask)
      * case its halted.
      */
     if (!qemu_cpu_is_self(cpu)) {
+        npu_log("tcg_handle_interrupt: qemu_cpu_kick\n\r");
         qemu_cpu_kick(cpu);
     } else {
         qatomic_set(&cpu_neg(cpu)->icount_decr.u16.high, -1);

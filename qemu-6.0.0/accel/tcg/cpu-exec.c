@@ -487,7 +487,7 @@ static inline void cpu_handle_debug_exception(CPUState *cpu)
 
 static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
 {
-    // npu_log("cpu_handle_exception: exception_index=%d\n\r", cpu->exception_index);
+    npu_log("cpu_handle_exception: exception_index=%d\n\r", cpu->exception_index);
     if (cpu->exception_index < 0) {
 #ifndef CONFIG_USER_ONLY
         if (replay_has_exception()
@@ -565,7 +565,7 @@ static inline bool need_replay_interrupt(int interrupt_request)
 static inline bool cpu_handle_interrupt(CPUState *cpu,
                                         TranslationBlock **last_tb)
 {
-    // npu_log("cpu_handle_interrupt\n\r");
+    npu_log("cpu_handle_interrupt\n\r");
     CPUClass *cc = CPU_GET_CLASS(cpu);
 
     /* Clear the interrupt flag now since we're processing
@@ -576,7 +576,10 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
     qatomic_mb_set(&cpu_neg(cpu)->icount_decr.u16.high, 0);
 
     if (unlikely(qatomic_read(&cpu->interrupt_request))) {
-        npu_log("cpu_handle_interrupt: REAL IRQ\n\r");
+        RISCVCPU *cpulog = RISCV_CPU(cpu);
+        CPURISCVState *envlog = &cpulog->env;
+        npu_log("cpu_handle_interrupt: REAL IRQ (pc=%x)\n\r", envlog->pc);
+        // exit(-1);
         int interrupt_request;
         qemu_mutex_lock_iothread();
         interrupt_request = cpu->interrupt_request;
@@ -624,6 +627,7 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
            True when it is, and we should restart on a new TB,
            and via longjmp via cpu_loop_exit.  */
         else {
+            npu_log("cpu_handle_interrupt: The target hook\n\r");
             if (cc->tcg_ops->cpu_exec_interrupt &&
                 cc->tcg_ops->cpu_exec_interrupt(cpu, interrupt_request)) {
                 if (need_replay_interrupt(interrupt_request)) {
@@ -662,6 +666,7 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
         if (cpu->exception_index == -1) {
             cpu->exception_index = EXCP_INTERRUPT;
         }
+        npu_log("cpu_handle_interrupt: exit to the main loop\n\r");
         return true;
     }
 
@@ -676,7 +681,9 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
     // npu_log("cpu_loop_exec_tb: PC=%lx (Thread %d)\n\r", tb->pc, cpu->thread_id);
     trace_exec_tb(tb, tb->pc);
     tb = cpu_tb_exec(cpu, tb, tb_exit);
-    // npu_log("exit cause=%lx\n\r", *tb_exit);
+    RISCVCPU *cpulog = RISCV_CPU(cpu);
+    CPURISCVState *envlog = &cpulog->env;
+    // npu_log("exit cause=%lx (pc=%x)\n\r", *tb_exit, envlog->pc);
     if (*tb_exit != TB_EXIT_REQUESTED) {
         *last_tb = tb;
         return;
