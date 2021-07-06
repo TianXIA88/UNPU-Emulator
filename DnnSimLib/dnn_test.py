@@ -23,8 +23,9 @@ def write_fm_to_file(file_path, fm_np, precision, fm_type, en_org=False,  en_cir
 if __name__ == "__main__":
     ifm_name = './data/ifm.txt'
     wt1_name = './data/wt1.txt'
+    bias1_name = './data/bias1.txt'
     # wt2_name = '../../clib/example/runtime/data/wt2.txt'
-    ofm_name = './output/ofm.txt'
+    ofm_name = './output/ofm3.txt'
 
     dnn = dnnlib.DnnSimLib() 
 
@@ -34,10 +35,8 @@ if __name__ == "__main__":
     
     dnn.set_wt_para(16, 3, 3, 1, 16)
     wt_np1 = dnn.read_wt(wt1_name, 8, 'circuit')
-    # print(type(wt_np1), wt_np1)
 
-    # dnn.set_wt_para(16, 3, 3, 1, 16)
-    # wt_np2 = dnn.read_wt(wt2_name, 8, 'circuit')
+    bias_np1 = dnn.read_bias(bias1_name, 32, type='conv') 
 
     # set pad/stride param
     dnn.set_pad_para(1, 1, 1, 1)
@@ -45,8 +44,9 @@ if __name__ == "__main__":
 
     # conv1
     ifm_pad_np = dnn.pad_fm(ifm_np)
-    conv_np = dnn.conv(ifm_pad_np, wt_np1)
-    ofm_np = dnn.shift_fm(conv_np, 0)
+    ofm_np = dnn.conv(ifm_pad_np, wt_np1)
+    ofm_np = dnn.add_bias(ofm_np, bias_np1)
+    ofm_np = dnn.shift_fm(ofm_np, 0)
     # ofm_np = dnn.prot_fm(ofm_np, 8)
     
     # conv2
