@@ -109,6 +109,31 @@ enum {
     typedef struct {int32_t words[NVEC_REG_LENGTH];} nvreg_i_t;
     typedef struct {char exp[NVEC_REG_LENGTH];} nvreg_e_t;
     typedef struct {bool flags[NVEC_REG_LENGTH];} nvmreg_t;
+
+    typedef struct {
+        target_ulong mac_cfg;
+        target_ulong loop0_cfg;
+        target_ulong loop0_step;
+        target_ulong loop1_cfg; 
+        target_ulong loop1_step;
+        target_ulong loop2_cfg;
+        target_ulong loop2_step;
+        target_ulong loop3_cfg;
+        target_ulong loop3_step;
+        target_ulong loop4_cfg;
+        target_ulong loop4_step;
+        target_ulong loop5_cfg;
+        target_ulong loop5_step;
+        target_ulong loop6_cfg;
+        target_ulong loop6_step;
+        target_ulong postproc_cfg;
+        target_ulong bc_cfg;
+        target_ulong clip0_sat_cfg;
+        target_ulong clip1_sat_cfg;
+        target_ulong fm_region;
+        target_ulong pad_cfg;
+        target_ulong pad_offset;
+    } mtx_para_table_t;
 #endif
 
 typedef struct CPURISCVState CPURISCVState;
@@ -135,6 +160,14 @@ struct CPURISCVState {
         /* NPU CSR */
         target_ulong fprint_addr;
         target_ulong fprint_len;
+
+        mtx_para_table_t mtx_pt[4]; // total 4 groups
+        target_ulong pt_sel;
+        // target_ulong mpu_status;
+        // target_ulong lut_ctrl;
+        // target_ulong lut_value;
+
+        char lut[256];
     #endif
 
     target_ulong gpr[32];

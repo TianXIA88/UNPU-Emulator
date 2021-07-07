@@ -1371,6 +1371,7 @@ int riscv_csrrw_debug(CPURISCVState *env, int csrno, target_ulong *ret_value,
 }
 
 #ifdef CONFIG_NPU
+
 #define CSR_READ(x)     \
     static int read_##x(CPURISCVState *env, int csrno, target_ulong *val) \
     {                   \
@@ -1385,12 +1386,84 @@ int riscv_csrrw_debug(CPURISCVState *env, int csrno, target_ulong *ret_value,
         return 0;       \
     }                   
 
-#define CSR_WR_FUNC(x)  \
+#define CSR_RO_READ(x)     \
+    static int read_##x(CPURISCVState *env, int csrno, target_ulong *val) \
+    {                   \
+        npu_log("READ ERROR\n\r");  \
+        exit(-1);       \
+    } 
+
+#define CSR_PT_WRITE(x)    \
+    static int write_##x(CPURISCVState *env, int csrno, target_ulong val) \
+    {                   \
+        env->mtx_pt[env->pt_sel].x = val;   \
+        return 0;       \
+    } 
+
+#define CSR_RW_FUNC(x)  \
     CSR_READ(x) \
     CSR_WRITE(x)
 
-CSR_WR_FUNC(fprint_addr )
-CSR_WR_FUNC(fprint_len  )
+#define CSR_PT_FUNC(x)  \
+    CSR_RO_READ(x)  \
+    CSR_PT_WRITE(x)
+
+#define CSR_RO_FUNC(x)  \
+    CSR_RO_READ(x)  \
+    CSR_WRITE(x) 
+
+CSR_PT_FUNC(mac_cfg         )
+CSR_PT_FUNC(loop0_cfg       )
+CSR_PT_FUNC(loop0_step      )
+CSR_PT_FUNC(loop1_cfg       )
+CSR_PT_FUNC(loop1_step      )
+CSR_PT_FUNC(loop2_cfg       )
+CSR_PT_FUNC(loop2_step      )
+CSR_PT_FUNC(loop3_cfg       )
+CSR_PT_FUNC(loop3_step      )
+CSR_PT_FUNC(loop4_cfg       )
+CSR_PT_FUNC(loop4_step      )
+CSR_PT_FUNC(loop5_cfg       )
+CSR_PT_FUNC(loop5_step      )
+CSR_PT_FUNC(loop6_cfg       )
+CSR_PT_FUNC(loop6_step      )
+CSR_PT_FUNC(postproc_cfg    )
+CSR_PT_FUNC(bc_cfg          )
+CSR_PT_FUNC(clip0_sat_cfg   )
+CSR_PT_FUNC(clip1_sat_cfg   )
+CSR_PT_FUNC(fm_region       )
+CSR_PT_FUNC(pad_cfg         )
+CSR_PT_FUNC(pad_offset      )
+CSR_RO_FUNC(pt_sel          )
+
+CSR_RW_FUNC(fprint_addr )
+CSR_RW_FUNC(fprint_len  )
+
+static int read_ro_csr(CPURISCVState *env, int csrno, target_ulong val){
+    npu_log("READ ERROR\n\r");
+    exit(-1);
+}
+
+unsigned int lut_ptr = 0;
+static int write_lut_ctrl(CPURISCVState *env, int csrno, target_ulong val){
+    if(val&0x1)
+        lut_ptr = 0;
+    else{
+        npu_log("CSR ERROR\n\r");
+        exit(-1);
+    }
+    return 0;
+}
+static int write_lut_value(CPURISCVState *env, int csrno, target_ulong val){
+    env->lut[lut_ptr] = (char)val & 0xff;
+    env->lut[lut_ptr+1] = (char)((val & 0xff00)>>8);
+    env->lut[lut_ptr+2] = (char)((val & 0xff0000)>>16);
+    env->lut[lut_ptr+3] = (char)((val & 0xff000000)>>24);
+    lut_ptr += 4;
+    if(lut_ptr >= 256)
+        lut_ptr = 0;
+    return 0;
+}
 #endif
 
 /* Control and Status Register function table */
@@ -1669,6 +1742,32 @@ riscv_csr_operations csr_ops[CSR_TABLE_SIZE] = {
     [CSR_MHPMCOUNTER31H] = { "mhpmcounter31h", any32,  read_zero },
 #endif /* !CONFIG_USER_ONLY */
 #ifdef CONFIG_NPU
+    [CSR_MAC_CFG      ]  =   {"mac_cfg",        any32, read_mac_cfg      , write_mac_cfg      },
+    [CSR_LOOP0_CFG    ]  =   {"loop0_cfg",      any32, read_loop0_cfg    , write_loop0_cfg    },
+    [CSR_LOOP0_STEP   ]  =   {"loop0_step",     any32, read_loop0_step   , write_loop0_step   },
+    [CSR_LOOP1_CFG    ]  =   {"loop1_cfg",      any32, read_loop1_cfg    , write_loop1_cfg    },
+    [CSR_LOOP1_STEP   ]  =   {"loop1_step",     any32, read_loop1_step   , write_loop1_step   },
+    [CSR_LOOP2_CFG    ]  =   {"loop2_cfg",      any32, read_loop2_cfg    , write_loop2_cfg    },
+    [CSR_LOOP2_STEP   ]  =   {"loop2_step",     any32, read_loop2_step   , write_loop2_step   },
+    [CSR_LOOP3_CFG    ]  =   {"loop3_cfg",      any32, read_loop3_cfg    , write_loop3_cfg    },
+    [CSR_LOOP3_STEP   ]  =   {"loop3_step",     any32, read_loop3_step   , write_loop3_step   },
+    [CSR_LOOP4_CFG    ]  =   {"loop4_cfg",      any32, read_loop4_cfg    , write_loop4_cfg    },
+    [CSR_LOOP4_STEP   ]  =   {"loop4_step",     any32, read_loop4_step   , write_loop4_step   },
+    [CSR_LOOP5_CFG    ]  =   {"loop5_cfg",      any32, read_loop5_cfg    , write_loop5_cfg    },
+    [CSR_LOOP5_STEP   ]  =   {"loop5_step",     any32, read_loop5_step   , write_loop5_step   },
+    [CSR_LOOP6_CFG    ]  =   {"loop6_cfg",      any32, read_loop6_cfg    , write_loop6_cfg    },
+    [CSR_LOOP6_STEP   ]  =   {"loop6_step",     any32, read_loop6_step   , write_loop6_step   },
+    [CSR_POSTPROC_CFG ]  =   {"postproc_cfg",   any32, read_postproc_cfg , write_postproc_cfg },
+    [CSR_BC_CFG       ]  =   {"bc_cfg",         any32, read_bc_cfg       , write_bc_cfg       },
+    [CSR_CLIP0_SAT_CFG]  =   {"clip0_sat_cfg",  any32, read_clip0_sat_cfg, write_clip0_sat_cfg},
+    [CSR_CLIP1_SAT_CFG]  =   {"clip1_sat_cfg",  any32, read_clip1_sat_cfg, write_clip1_sat_cfg},
+    [CSR_FM_REGION    ]  =   {"fm_region",      any32, read_fm_region    , write_fm_region    },
+    [CSR_PAD_CFG      ]  =   {"pad_cfg",        any32, read_pad_cfg      , write_pad_cfg      },
+    [CSR_PAD_OFFSET   ]  =   {"pad_offset",     any32, read_pad_offset   , write_pad_offset   },
+    [CSR_PT_SEL       ]  =   {"pt_sel",         any32, read_pt_sel       , write_pt_sel       },
+    [CSR_LUT_CTRL     ]  =   {"lut_ctrl",       any32, read_ro_csr       , write_lut_ctrl     },
+    [CSR_LUT_VALUE    ]  =   {"lut_value",      any32, read_ro_csr       , write_lut_value    },  
+
     [CSR_FPRINT_ADDR]    =  {"fprintaddr", any32, read_fprint_addr, write_fprint_addr},
     [CSR_FPRINT_LEN]     =  {"fprintlen",  any32, read_fprint_len, write_fprint_len},
 #endif
