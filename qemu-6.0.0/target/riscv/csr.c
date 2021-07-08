@@ -1445,6 +1445,12 @@ static int read_ro_csr(CPURISCVState *env, int csrno, target_ulong val){
 }
 
 unsigned int lut_ptr = 0;
+unsigned int lut_sel_id = 0;
+
+static int write_lut_cfg(CPURISCVState *env, int csrno, target_ulong val){
+	lut_sel_id = val && 0xf;
+	return 0;
+}
 static int write_lut_ctrl(CPURISCVState *env, int csrno, target_ulong val){
     if(val&0x1)
         lut_ptr = 0;
@@ -1455,10 +1461,10 @@ static int write_lut_ctrl(CPURISCVState *env, int csrno, target_ulong val){
     return 0;
 }
 static int write_lut_value(CPURISCVState *env, int csrno, target_ulong val){
-    env->lut[lut_ptr] = (char)val & 0xff;
-    env->lut[lut_ptr+1] = (char)((val & 0xff00)>>8);
-    env->lut[lut_ptr+2] = (char)((val & 0xff0000)>>16);
-    env->lut[lut_ptr+3] = (char)((val & 0xff000000)>>24);
+    env->mtx_lut[lut_sel_id].lut[lut_ptr] = (char)val & 0xff;
+    env->mtx_lut[lut_sel_id].lut[lut_ptr+1] = (char)((val & 0xff00)>>8);
+    env->mtx_lut[lut_sel_id].lut[lut_ptr+2] = (char)((val & 0xff0000)>>16);
+    env->mtx_lut[lut_sel_id].lut[lut_ptr+3] = (char)((val & 0xff000000)>>24);
     lut_ptr += 4;
     if(lut_ptr >= 256)
         lut_ptr = 0;
@@ -1765,6 +1771,7 @@ riscv_csr_operations csr_ops[CSR_TABLE_SIZE] = {
     [CSR_PAD_CFG      ]  =   {"pad_cfg",        any32, read_pad_cfg      , write_pad_cfg      },
     [CSR_PAD_OFFSET   ]  =   {"pad_offset",     any32, read_pad_offset   , write_pad_offset   },
     [CSR_PT_SEL       ]  =   {"pt_sel",         any32, read_pt_sel       , write_pt_sel       },
+    [CSR_LUT_CFG      ]  =   {"lut_cfg",        any32, read_ro_csr       , write_lut_cfg      },
     [CSR_LUT_CTRL     ]  =   {"lut_ctrl",       any32, read_ro_csr       , write_lut_ctrl     },
     [CSR_LUT_VALUE    ]  =   {"lut_value",      any32, read_ro_csr       , write_lut_value    },  
 

@@ -390,8 +390,9 @@
     #define CSR_PAD_OFFSET      0xe54
     #define CSR_PT_SEL          0xe60
     // #define CSR_MPU_STATUS      0xe64
-    #define CSR_LUT_CTRL        0xe70
-    #define CSR_LUT_VALUE       0xe74
+    #define CSR_LUT_CFG		0xe70
+    #define CSR_LUT_CTRL        0xe74
+    #define CSR_LUT_VALUE       0xe78
 
 #endif
 

@@ -134,6 +134,8 @@ enum {
         target_ulong pad_cfg;
         target_ulong pad_offset;
     } mtx_para_table_t;
+	
+	typedef struct {char lut[256];} lut_t;
 #endif
 
 typedef struct CPURISCVState CPURISCVState;
@@ -167,7 +169,7 @@ struct CPURISCVState {
         // target_ulong lut_ctrl;
         // target_ulong lut_value;
 
-        char lut[256];
+        lut_t mtx_lut[4]; // total 4 groups
     #endif
 
     target_ulong gpr[32];
