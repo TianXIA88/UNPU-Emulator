@@ -1,5 +1,9 @@
 #ifdef CONFIG_NPU
 DEF_HELPER_1(necho, void, env)
+DEF_HELPER_1(false_vloop_start, void, env)
+DEF_HELPER_1(false_vloop_end, void, env)
+DEF_HELPER_1(false_vld, void, env)
+DEF_HELPER_1(false_vst, void, env)
 #endif
 
 /* Exceptions */

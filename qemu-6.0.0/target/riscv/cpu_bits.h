@@ -363,36 +363,49 @@
 #define CSR_MDBOUND         0x385
 
 #ifdef CONFIG_NPU
-    #define CSR_FPRINT_ADDR     0xf00
-    #define CSR_FPRINT_LEN      0xf01
+    #define CSR_FPRINT_ADDR         0x700
+    #define CSR_FPRINT_LEN          0x701
 
-    #define CSR_MAC_CFG         0xe00
-    #define CSR_LOOP0_CFG       0xe04
-    #define CSR_LOOP0_STEP      0xe08
-    #define CSR_LOOP1_CFG       0xe0c
-    #define CSR_LOOP1_STEP      0xe10
-    #define CSR_LOOP2_CFG       0xe14
-    #define CSR_LOOP2_STEP      0xe18
-    #define CSR_LOOP3_CFG       0xe1c
-    #define CSR_LOOP3_STEP      0xe20
-    #define CSR_LOOP4_CFG       0xe24
-    #define CSR_LOOP4_STEP      0xe28
-    #define CSR_LOOP5_CFG       0xe2c
-    #define CSR_LOOP5_STEP      0xe30
-    #define CSR_LOOP6_CFG       0xe34
-    #define CSR_LOOP6_STEP      0xe38
-    #define CSR_POSTPROC_CFG    0xe3c
-    #define CSR_BC_CFG          0xe40
-    #define CSR_CLIP0_SAT_CFG   0xe44
-    #define CSR_CLIP1_SAT_CFG   0xe48
-    #define CSR_FM_REGION       0xe4c
-    #define CSR_PAD_CFG         0xe50
-    #define CSR_PAD_OFFSET      0xe54
-    #define CSR_PT_SEL          0xe60
-    // #define CSR_MPU_STATUS      0xe64
-    #define CSR_LUT_CFG		0xe70
-    #define CSR_LUT_CTRL        0xe74
-    #define CSR_LUT_VALUE       0xe78
+    #define CSR_MAC_CFG             0x710
+    #define CSR_LOOP0_CFG           0x711
+    #define CSR_LOOP0_STEP          0x712
+    #define CSR_LOOP1_CFG           0x713
+    #define CSR_LOOP1_STEP          0x714
+    #define CSR_LOOP2_CFG           0x715
+    #define CSR_LOOP2_STEP          0x716
+    #define CSR_LOOP3_CFG           0x717
+    #define CSR_LOOP3_STEP          0x718
+    #define CSR_LOOP4_CFG           0x719
+    #define CSR_LOOP4_STEP          0x71a
+    #define CSR_LOOP5_CFG           0x71b
+    #define CSR_LOOP5_STEP          0x71c
+    #define CSR_LOOP6_CFG           0x71d
+    #define CSR_LOOP6_STEP          0x71e
+    #define CSR_POSTPROC_CFG        0x71f
+    #define CSR_BC_CFG              0x720
+    #define CSR_CLIP0_SAT_CFG       0x721
+    #define CSR_CLIP1_SAT_CFG       0x722
+    #define CSR_FM_REGION           0x723
+    #define CSR_PAD_CFG             0x724
+    #define CSR_PAD_OFFSET          0x725
+    #define CSR_PT_SEL              0x726
+    #define CSR_LUT_CFG		        0x727
+    #define CSR_LUT_CTRL            0x728
+    #define CSR_LUT_VALUE           0x729
+
+    #define CSR_VLD_LOOP0_NUM       0x730
+    #define CSR_VLD_LOOP0_STEP      0x731
+    #define CSR_VLD_LOOP1_NUM       0x732
+    #define CSR_VLD_LOOP1_STEP      0x733
+    #define CSR_VLD_LOOP2_NUM       0x734
+    #define CSR_VLD_LOOP2_STEP      0x735
+    #define CSR_VST_LOOP0_NUM       0x736
+    #define CSR_VST_LOOP0_STEP      0x737
+    #define CSR_VST_LOOP1_NUM       0x738
+    #define CSR_VST_LOOP1_STEP      0x739
+    #define CSR_VST_LOOP2_NUM       0x73a
+    #define CSR_VST_LOOP2_STEP      0x73b
+    #define CSR_VECTOR_ROUND_MODE   0x73c
 
 #endif
 

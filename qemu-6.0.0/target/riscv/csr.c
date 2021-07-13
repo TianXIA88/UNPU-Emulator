@@ -1386,11 +1386,11 @@ int riscv_csrrw_debug(CPURISCVState *env, int csrno, target_ulong *ret_value,
         return 0;       \
     }                   
 
-#define CSR_RO_READ(x)     \
+#define CSR_NO_READ(x)     \
     static int read_##x(CPURISCVState *env, int csrno, target_ulong *val) \
     {                   \
-        npu_log("READ ERROR\n\r");  \
-        exit(-1);       \
+        *val = 0;       \
+        return 0;       \
     } 
 
 #define CSR_PT_WRITE(x)    \
@@ -1405,11 +1405,11 @@ int riscv_csrrw_debug(CPURISCVState *env, int csrno, target_ulong *ret_value,
     CSR_WRITE(x)
 
 #define CSR_PT_FUNC(x)  \
-    CSR_RO_READ(x)  \
+    CSR_NO_READ(x)  \
     CSR_PT_WRITE(x)
 
-#define CSR_RO_FUNC(x)  \
-    CSR_RO_READ(x)  \
+#define CSR_WO_FUNC(x)  \
+    CSR_NO_READ(x)  \
     CSR_WRITE(x) 
 
 CSR_PT_FUNC(mac_cfg         )
@@ -1434,14 +1434,28 @@ CSR_PT_FUNC(clip1_sat_cfg   )
 CSR_PT_FUNC(fm_region       )
 CSR_PT_FUNC(pad_cfg         )
 CSR_PT_FUNC(pad_offset      )
-CSR_RO_FUNC(pt_sel          )
+CSR_WO_FUNC(pt_sel          )
+
+CSR_WO_FUNC(vld_loop0_num       )
+CSR_WO_FUNC(vld_loop0_step      )
+CSR_WO_FUNC(vld_loop1_num       )
+CSR_WO_FUNC(vld_loop1_step      )
+CSR_WO_FUNC(vld_loop2_num       )
+CSR_WO_FUNC(vld_loop2_step      )
+CSR_WO_FUNC(vst_loop0_num       )
+CSR_WO_FUNC(vst_loop0_step      )
+CSR_WO_FUNC(vst_loop1_num       )
+CSR_WO_FUNC(vst_loop1_step      )
+CSR_WO_FUNC(vst_loop2_num       )
+CSR_WO_FUNC(vst_loop2_step      )
+CSR_WO_FUNC(vector_round_mode   )
 
 CSR_RW_FUNC(fprint_addr )
 CSR_RW_FUNC(fprint_len  )
 
-static int read_ro_csr(CPURISCVState *env, int csrno, target_ulong val){
-    npu_log("READ ERROR\n\r");
-    exit(-1);
+static int read_ro_csr(CPURISCVState *env, int csrno, target_ulong *val){
+    *val = 0;
+    return 0;
 }
 
 unsigned int lut_ptr = 0;
@@ -1455,7 +1469,7 @@ static int write_lut_ctrl(CPURISCVState *env, int csrno, target_ulong val){
     if(val&0x1)
         lut_ptr = 0;
     else{
-        npu_log("CSR ERROR\n\r");
+        npu_log("CSR WRITE ERROR\n\r");
         exit(-1);
     }
     return 0;
@@ -1774,6 +1788,20 @@ riscv_csr_operations csr_ops[CSR_TABLE_SIZE] = {
     [CSR_LUT_CFG      ]  =   {"lut_cfg",        any32, read_ro_csr       , write_lut_cfg      },
     [CSR_LUT_CTRL     ]  =   {"lut_ctrl",       any32, read_ro_csr       , write_lut_ctrl     },
     [CSR_LUT_VALUE    ]  =   {"lut_value",      any32, read_ro_csr       , write_lut_value    },  
+
+    [CSR_VLD_LOOP0_NUM    ]  =   {"vld_loop0_num",      any32, read_ro_csr    , write_vld_loop0_num    },  
+    [CSR_VLD_LOOP0_STEP   ]  =   {"vld_loop0_step",     any32, read_vld_loop0_step   , write_vld_loop0_step   },  
+    [CSR_VLD_LOOP1_NUM    ]  =   {"vld_loop1_num",      any32, read_vld_loop1_num    , write_vld_loop1_num    },  
+    [CSR_VLD_LOOP1_STEP   ]  =   {"vld_loop1_step",     any32, read_vld_loop1_step   , write_vld_loop1_step   },  
+    [CSR_VLD_LOOP2_NUM    ]  =   {"vld_loop2_num",      any32, read_vld_loop2_num    , write_vld_loop2_num    },  
+    [CSR_VLD_LOOP2_STEP   ]  =   {"vld_loop2_step",     any32, read_vld_loop2_step   , write_vld_loop2_step   },  
+    [CSR_VST_LOOP0_NUM    ]  =   {"vst_loop0_num",      any32, read_vst_loop0_num    , write_vst_loop0_num    },  
+    [CSR_VST_LOOP0_STEP   ]  =   {"vst_loop0_step",     any32, read_vst_loop0_step   , write_vst_loop0_step   },  
+    [CSR_VST_LOOP1_NUM    ]  =   {"vst_loop1_num",      any32, read_vst_loop1_num    , write_vst_loop1_num    },  
+    [CSR_VST_LOOP1_STEP   ]  =   {"vst_loop1_step",     any32, read_vst_loop1_step   , write_vst_loop1_step   },  
+    [CSR_VST_LOOP2_NUM    ]  =   {"vst_loop2_num",      any32, read_vst_loop2_num    , write_vst_loop2_num    },  
+    [CSR_VST_LOOP2_STEP   ]  =   {"vst_loop2_step",     any32, read_vst_loop2_step   , write_vst_loop2_step   },  
+    [CSR_VECTOR_ROUND_MODE]  =   {"vector_round_mode",  any32, read_vector_round_mode, write_vector_round_mode},  
 
     [CSR_FPRINT_ADDR]    =  {"fprintaddr", any32, read_fprint_addr, write_fprint_addr},
     [CSR_FPRINT_LEN]     =  {"fprintlen",  any32, read_fprint_len, write_fprint_len},

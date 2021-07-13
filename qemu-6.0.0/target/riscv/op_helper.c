@@ -250,15 +250,183 @@ target_ulong helper_hyp_hlvx_wu(CPURISCVState *env, target_ulong address)
 
 #endif /* !CONFIG_USER_ONLY */
 
-
 #ifdef CONFIG_NPU
+
 #define npu_raise_exception()  {riscv_raise_exception(env, RISCV_EXCP_NPU_COMPUTE_FAULT, GETPC());}
 
-int xx = 0;
+static void vloop_clear(vloop_state_t *vstate){
+    vstate->enabled = false;
+    vstate->loop_num = 0;
+    vstate->loop_tail_ptr = 0;
+    for(int i=0; i<VEC_CMDQ_DEPTH; i++){
+        vstate->records[i].type = VLOOP_MISC;
+        vstate->records[i].ldst_addr = 0;
+        vstate->records[i].func = NULL;
+        memset(&vstate->records[i].args_list, 0, sizeof(vloop_args_t));
+    }
+}
+
+static void vloop_setup(vloop_state_t *vstate, uint32_t repeat){
+    vloop_clear(vstate);
+    vstate->enabled = 1;
+    vstate->loop_num = repeat;
+}
+
+static void vloop_finish(vloop_state_t *vstate){
+    vstate->enabled = 0;
+}
+
+static vloop_args_t *vloop_push_record(vloop_state_t *vstate, vloop_insn_e type, void (*func)(uint32_t*, uint32_t), uint32_t ldst_addr){
+    if(vstate->loop_tail_ptr >= VEC_CMDQ_DEPTH){
+        npu_log("VLOOP PUSH ERROR\n\r");
+        exit(-1);
+    }
+    npu_log("VLOOP RECORD #%d\n\r", vstate->loop_tail_ptr);
+    vloop_entry_t *new_record = &vstate->records[vstate->loop_tail_ptr];
+    vloop_args_t *args = &new_record->args_list;
+    new_record->type = type;
+    new_record->ldst_addr = ldst_addr;
+    new_record->func = func;
+    
+    vstate->loop_tail_ptr++;
+
+    return args;
+}
+
+static void vloop_push_args(vloop_args_t *arg_list, uint32_t value){
+    if(arg_list->arg_tail_ptr >= VEC_ARGS_LIMIT){
+        npu_log("VLOOP PUSH ERROR\n\r");
+        exit(-1);
+    }
+
+    arg_list->args[arg_list->arg_tail_ptr] = value;
+    arg_list->arg_tail_ptr++;
+}
+
+static void vloop_exec_once(vloop_state_t *vstate, int32_t ld_diff, int32_t st_diff){
+    vloop_entry_t *record;
+    uint32_t current_ldst_addr;
+    for(int i=0; i<= vstate->loop_tail_ptr-1; i++){
+        record = &vstate->records[i];
+        if(record->type == VLOOP_LD){
+            current_ldst_addr = record->ldst_addr + ld_diff;   
+        }
+        else if(record->type ==VLOOP_ST){
+            current_ldst_addr = record->ldst_addr + st_diff;
+        }
+        else{
+            current_ldst_addr = 0;
+        }
+        record->func((uint32_t *)&record->args_list, current_ldst_addr);
+    }
+}
+
+static int32_t vloop_gen_diff(uint32_t step_num, 
+                                int32_t loop2_step, int32_t loop1_step, int32_t loop0_step, 
+                                uint32_t loop2_cnt, uint32_t loop1_cnt, uint32_t loop0_cnt){
+    int32_t loop2_addr; 
+    int32_t loop1_addr;
+    int32_t loop0_addr;
+    uint32_t step_cnt;
+
+    // printf("%d %d %d %d %d %d %d\n\r", step_num, loop2_step, loop1_step, loop0_step, loop2_cnt, loop1_cnt, loop0_cnt);
+    loop2_addr = 0;
+    step_cnt = 0;
+    for(int i2=0; i2<=loop2_cnt; i2++){
+        loop1_addr = loop2_addr;
+        for(int i1=0; i1<=loop1_cnt; i1++){
+            loop0_addr = loop1_addr;
+            for(int i0=0; i0<=loop0_cnt; i0++){
+                if(step_cnt == step_num)
+                    return loop0_addr;
+                loop0_addr += loop0_step;
+                step_cnt++;
+            }
+            loop1_addr += loop1_step;
+        }
+        loop2_addr += loop2_step;
+    }
+    return 0;
+}
+
+static void vloop_exec(CPURISCVState *env){
+    int32_t ld_diff=0, st_diff=0;
+    vloop_state_t *vstate = &env->vloop_state;
+    for(int i = 0; i < vstate->loop_num; i++){
+        ld_diff = vloop_gen_diff(i, env->vld_loop2_step, env->vld_loop1_step, env->vld_loop0_step,
+                                    env->vld_loop2_num, env->vld_loop1_num, env->vld_loop0_num);
+        st_diff = vloop_gen_diff(i, env->vst_loop2_step, env->vst_loop1_step, env->vst_loop0_step,
+                                    env->vst_loop2_num, env->vst_loop1_num, env->vst_loop0_num);
+        vloop_exec_once(vstate, ld_diff, st_diff);
+    }
+}
+
+void false_vld(uint32_t addr, uint32_t x, uint32_t y, uint32_t z){
+    npu_log("VLD ADDR = %d, FLag = %d\n\r", addr, x+y+z);
+}
+
+void false_vld_wrapper(uint32_t *args, uint32_t addr){
+    false_vld(addr, args[0], args[1], args[2]);
+}
+
+void false_vst(uint32_t addr, uint32_t x, uint32_t y, uint32_t z){
+    npu_log("VST ADDR = %d, FLag = %d\n\r", addr, x+y+z);
+}
+
+void false_vst_wrapper(uint32_t *args, uint32_t addr){
+    false_vst(addr, args[0], args[1], args[2]);
+}
+
+void helper_false_vld(CPURISCVState *env)
+{
+    int addr = 100;
+    vloop_args_t *args;
+    if(env->vloop_state.enabled){
+        args = vloop_push_record(&env->vloop_state, VLOOP_LD, false_vld_wrapper, addr);
+        vloop_push_args(args, 1);
+        vloop_push_args(args, 2);
+        vloop_push_args(args, 3);
+    }
+    else{
+        false_vld(addr, 1, 2, 3);
+    }
+}
+
+void helper_false_vst(CPURISCVState *env)
+{
+    int addr = 1000;
+    vloop_args_t *args;
+    if(env->vloop_state.enabled){
+        args = vloop_push_record(&env->vloop_state, VLOOP_ST, false_vst_wrapper, addr);
+        vloop_push_args(args, 111);
+        vloop_push_args(args, 222);
+        vloop_push_args(args, 333);
+    }
+    else{
+        false_vst(addr, 111, 222, 333);
+    }
+}
+
+void helper_false_vloop_start(CPURISCVState *env)
+{
+    npu_log("vloop start\n\r");
+    vloop_setup(&env->vloop_state, 36);
+}
+
+void helper_false_vloop_end(CPURISCVState *env)
+{
+    // void (*funcc)(uint32_t *x, uint32_t y);
+    int x[3] = {11, 22, 33};
+    npu_log("vloop run (repeat = %d, record = %d)\n\r", env->vloop_state.loop_num, env->vloop_state.loop_tail_ptr);
+    vloop_exec(env);
+    // env->vloop_state.records[0].func(&x[0], 1234);
+    vloop_finish(&env->vloop_state);
+    npu_log("vloop end\n\r");
+}
 
 void helper_necho(CPURISCVState *env)
 {
-    int tmp;
+    // int tmp;
     npu_log("echo at pc=%x\n\r", env->pc);
     npu_log("VPRO=%d\n\r", env->nvmr[0].flags[0]);
     // npu_log("check vmr: VMRO=%d\n\r", env->nvmr[0].flags[0]);
@@ -266,7 +434,7 @@ void helper_necho(CPURISCVState *env)
     // tmp = cpu_ldl_data(env, 0x1000000);
     // npu_log("check shared memory: [0]=0x%x\n\r", tmp);
     // cpu_stl_data(env, 0X1000000, 0);
-    // if(xx++ == 0)
-    //     npu_raise_exception();
+    // npu_raise_exception();
 }
+
 #endif

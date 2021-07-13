@@ -605,6 +605,18 @@ static void decode_npu(DisasContext *ctx, CPURISCVState *env, uint32_t insn){
             case 0xd: // deadbeef
                 gen_helper_necho(cpu_env);
                 break;
+            case 0x1: // false vloop start
+                gen_helper_false_vloop_start(cpu_env);
+                break;
+            case 0x2: // false vloop end
+                gen_helper_false_vloop_end(cpu_env);
+                break;
+            case 0x3: // false vld
+                gen_helper_false_vld(cpu_env);
+                break;
+            case 0x4: // false vst
+                gen_helper_false_vst(cpu_env);
+                break;
             default:
                 npu_log("ERROR: UNDEFINED META INSN!");
                 break;

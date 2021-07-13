@@ -487,7 +487,7 @@ static inline void cpu_handle_debug_exception(CPUState *cpu)
 
 static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
 {
-    npu_log("cpu_handle_exception: exception_index=%d\n\r", cpu->exception_index);
+    // npu_log("cpu_handle_exception: exception_index=%d\n\r", cpu->exception_index);
     if (cpu->exception_index < 0) {
 #ifndef CONFIG_USER_ONLY
         if (replay_has_exception()
@@ -565,7 +565,7 @@ static inline bool need_replay_interrupt(int interrupt_request)
 static inline bool cpu_handle_interrupt(CPUState *cpu,
                                         TranslationBlock **last_tb)
 {
-    npu_log("cpu_handle_interrupt\n\r");
+    // npu_log("cpu_handle_interrupt\n\r");
     CPUClass *cc = CPU_GET_CLASS(cpu);
 
     /* Clear the interrupt flag now since we're processing
@@ -578,7 +578,7 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
     if (unlikely(qatomic_read(&cpu->interrupt_request))) {
         RISCVCPU *cpulog = RISCV_CPU(cpu);
         CPURISCVState *envlog = &cpulog->env;
-        npu_log("cpu_handle_interrupt: REAL IRQ (pc=%x)\n\r", envlog->pc);
+        // npu_log("cpu_handle_interrupt: REAL IRQ (pc=%x)\n\r", envlog->pc);
         // exit(-1);
         int interrupt_request;
         qemu_mutex_lock_iothread();
@@ -627,7 +627,7 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
            True when it is, and we should restart on a new TB,
            and via longjmp via cpu_loop_exit.  */
         else {
-            npu_log("cpu_handle_interrupt: The target hook\n\r");
+            // npu_log("cpu_handle_interrupt: The target hook\n\r");
             if (cc->tcg_ops->cpu_exec_interrupt &&
                 cc->tcg_ops->cpu_exec_interrupt(cpu, interrupt_request)) {
                 if (need_replay_interrupt(interrupt_request)) {
@@ -666,7 +666,7 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
         if (cpu->exception_index == -1) {
             cpu->exception_index = EXCP_INTERRUPT;
         }
-        npu_log("cpu_handle_interrupt: exit to the main loop\n\r");
+        // npu_log("cpu_handle_interrupt: exit to the main loop\n\r");
         return true;
     }
 

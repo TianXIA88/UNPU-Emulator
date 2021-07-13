@@ -106,10 +106,12 @@ enum {
     #define LMWT_SIZE_BYTE  (1024 * 64)
     #define LMBC_SIZE_BYTE  (1024 * 8)
 
+    // registers
     typedef struct {int32_t words[NVEC_REG_LENGTH];} nvreg_i_t;
     typedef struct {char exp[NVEC_REG_LENGTH];} nvreg_e_t;
     typedef struct {bool flags[NVEC_REG_LENGTH];} nvmreg_t;
 
+    // matrix csr
     typedef struct {
         target_ulong mac_cfg;
         target_ulong loop0_cfg;
@@ -136,6 +138,35 @@ enum {
     } mtx_para_table_t;
 	
 	typedef struct {char lut[256];} lut_t;
+
+    // vector loop
+    #define VEC_CMDQ_DEPTH  64
+    #define VEC_ARGS_LIMIT  16
+
+    typedef enum {
+        VLOOP_LD,
+        VLOOP_ST,
+        VLOOP_MISC
+    } vloop_insn_e;
+
+    typedef struct{
+        uint32_t args[VEC_ARGS_LIMIT];
+        uint32_t arg_tail_ptr;
+    } vloop_args_t;
+
+    typedef struct{
+        vloop_insn_e type;
+        void (*func)(uint32_t*, uint32_t);
+        vloop_args_t args_list;
+        uint32_t ldst_addr;
+    } vloop_entry_t;
+
+    typedef struct{
+        bool enabled;
+        uint32_t loop_num;
+        uint32_t loop_tail_ptr;
+        vloop_entry_t records[VEC_CMDQ_DEPTH];
+    } vloop_state_t;
 #endif
 
 typedef struct CPURISCVState CPURISCVState;
@@ -159,17 +190,34 @@ struct CPURISCVState {
         unsigned char lmwt[LMWT_SIZE_BYTE];
         unsigned char lmbc[LMBC_SIZE_BYTE];
 
-        /* NPU CSR */
+        /* DEBUG CSR */
         target_ulong fprint_addr;
         target_ulong fprint_len;
 
+        /* Matrix CSR */
         mtx_para_table_t mtx_pt[4]; // total 4 groups
         target_ulong pt_sel;
         // target_ulong mpu_status;
         // target_ulong lut_ctrl;
         // target_ulong lut_value;
-
         lut_t mtx_lut[4]; // total 4 groups
+
+        /* Vector loop CSR*/
+        target_ulong vld_loop0_num;
+        target_ulong vld_loop0_step;
+        target_ulong vld_loop1_num;
+        target_ulong vld_loop1_step;
+        target_ulong vld_loop2_num;
+        target_ulong vld_loop2_step;
+        target_ulong vst_loop0_num;
+        target_ulong vst_loop0_step;
+        target_ulong vst_loop1_num;
+        target_ulong vst_loop1_step;
+        target_ulong vst_loop2_num;
+        target_ulong vst_loop2_step;
+        target_ulong vector_round_mode;
+
+        vloop_state_t vloop_state;
     #endif
 
     target_ulong gpr[32];
