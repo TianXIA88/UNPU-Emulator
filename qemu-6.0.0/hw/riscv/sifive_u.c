@@ -63,6 +63,8 @@
 
 #include <libfdt.h>
 
+extern Barrier barrier[BARRIER_NUM]; // for barrier
+
 static const MemMapEntry sifive_u_memmap[] = {
     [SIFIVE_U_DEV_DEBUG] =    {        0x0,      0x100 },
     [SIFIVE_U_DEV_MROM] =     {     0x1000,     0xf000 },
@@ -482,8 +484,28 @@ static void sifive_u_machine_reset(void *opaque, int n, int level)
     }
 }
 
+static bool sifive_u_init_barrier(void) // for barrier
+{
+    for(int i = 0; i < BARRIER_NUM; i++)
+    {
+        //init all barrier
+
+        for(int j = 0; j < CORE_NUM; j++)
+        {
+            barrier[i].core[j] = 0;
+        }
+        barrier[i].counter = 0;
+        barrier[i].initialized = 0;
+        barrier[i].sync_count = 0;
+
+
+    }
+}
+
 static void sifive_u_machine_init(MachineState *machine)
 {
+    npu_log("sifive_u_machine_init\n\r");
+    sifive_u_init_barrier();
     const MemMapEntry *memmap = sifive_u_memmap;
     SiFiveUState *s = RISCV_U_MACHINE(machine);
     MemoryRegion *system_memory = get_system_memory();
@@ -747,6 +769,7 @@ type_init(sifive_u_machine_init_register_types)
 
 static void sifive_u_soc_instance_init(Object *obj)
 {
+    npu_log("sifive_u_soc_instance_init\n\r");
     SiFiveUSoCState *s = RISCV_U_SOC(obj);
 
     object_initialize_child(obj, "e-cluster", &s->e_cluster, TYPE_CPU_CLUSTER);
@@ -772,6 +795,7 @@ static void sifive_u_soc_instance_init(Object *obj)
     object_initialize_child(obj, "pdma", &s->dma, TYPE_SIFIVE_PDMA);
     object_initialize_child(obj, "spi0", &s->spi0, TYPE_SIFIVE_SPI);
     object_initialize_child(obj, "spi2", &s->spi2, TYPE_SIFIVE_SPI);
+    
 }
 
 static void sifive_u_soc_realize(DeviceState *dev, Error **errp)

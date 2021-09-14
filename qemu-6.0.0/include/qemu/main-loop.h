@@ -280,6 +280,14 @@ bool qemu_mutex_iothread_locked(void);
     qemu_mutex_lock_iothread_impl(__FILE__, __LINE__)
 void qemu_mutex_lock_iothread_impl(const char *file, int line);
 
+
+// for barrier
+#define qemu_mutex_lock_barrier(barrier_id)                      \
+    qemu_mutex_lock_barrier_impl(barrier_id, __FILE__, __LINE__)
+void qemu_mutex_lock_barrier_impl(int barrier_id, const char *file, int line);
+void qemu_mutex_unlock_barrier(int barrier_id);
+bool qemu_mutex_barrier_locked(int barrier_id);
+
 /**
  * qemu_mutex_unlock_iothread: Unlock the main loop mutex.
  *

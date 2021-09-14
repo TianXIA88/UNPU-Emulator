@@ -24,11 +24,13 @@
 #include "exec/exec-all.h"
 #include "exec/helper-proto.h"
 
+extern Barrier barrier[BARRIER_NUM]; //for barrier
+
 /* Exceptions processing helpers */
 void QEMU_NORETURN riscv_raise_exception(CPURISCVState *env,
                                           uint32_t exception, uintptr_t pc)
 {
-    // npu_log("riscv_raise_exception: pc=%lx expt=%d\n\r", pc, exception);
+    npu_log("riscv_raise_exception: pc=%lx expt=%d\n\r", pc, exception);
     CPUState *cs = env_cpu(env);
     cs->exception_index = exception;
     cpu_loop_exit_restore(cs, pc);
@@ -179,6 +181,7 @@ target_ulong helper_mret(CPURISCVState *env, target_ulong cpu_pc_deb)
 
 void helper_wfi(CPURISCVState *env)
 {
+    printf("======wfi=====(PC: %x)\n\r", env->pc);
     CPUState *cs = env_cpu(env);
 
     if ((env->priv == PRV_S &&
@@ -190,6 +193,36 @@ void helper_wfi(CPURISCVState *env)
         cs->exception_index = EXCP_HLT;
         cpu_loop_exit(cs);
     }
+}
+
+void helper_barrier(CPURISCVState *env, uint32_t rs) // for barrier
+{
+    uint32_t barrier_id, sync_count, hart_id;
+    CPUState *cs = env_cpu(env);
+    barrier_id = rs & 0xfff;
+    sync_count = rs >> 12;
+    hart_id = env->mhartid;
+    printf("======barrier=====, hart_id: %x\n\r", hart_id);
+    cs->wait_for_barrier = 1;
+    cs->exception_index = EXCP_BARRIER;
+    cs->barrier_id = barrier_id;
+    cs->sync_count = sync_count;
+    cs->hart_id = hart_id;
+    // barrier
+    // if(barrier[barrier_id].initialized == 0){
+    //     barrier[barrier_id].initialized = 1;
+    //     barrier[barrier_id].counter = sync_count;
+    //     barrier[barrier_id].sync_count = sync_count;
+    // }else{
+    //     if(sync_count != barrier[barrier_id].sync_count){ //exit
+
+    //     }
+    //     barrier[barrier_id].counter --;
+    // }
+    // barrier[barrier_id].core[hart_id] = 1;
+    cpu_restore_state(cs, GETPC(), true);// to do
+    cpu_loop_exit(cs);
+    
 }
 
 void helper_tlb_flush(CPURISCVState *env)
@@ -427,6 +460,7 @@ void helper_false_vloop_end(CPURISCVState *env)
 void helper_necho(CPURISCVState *env)
 {
     // int tmp;
+    printf("echo at pc=%x\n\r", env->pc);
     npu_log("echo at pc=%x\n\r", env->pc);
     npu_log("VPRO=%d\n\r", env->nvmr[0].flags[0]);
     // npu_log("check vmr: VMRO=%d\n\r", env->nvmr[0].flags[0]);

@@ -23,7 +23,6 @@ static inline TranslationBlock *tb_lookup(CPUState *cpu, target_ulong pc,
 {
     TranslationBlock *tb;
     uint32_t hash;
-
     /* we should never be trying to look up an INVALID tb */
     tcg_debug_assert(!(cflags & CF_INVALID));
 

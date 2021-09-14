@@ -1698,6 +1698,7 @@ QEMU_BUILD_BUG_ON(FRAME_SIZE > 0x7ff);
 /* Generate global QEMU prologue and epilogue code */
 static void tcg_target_qemu_prologue(TCGContext *s)
 {
+    printf("tcg_target_qemu_prologue\n\r");
     int i;
 
     tcg_set_frame(s, TCG_REG_SP, TCG_STATIC_CALL_ARGS_SIZE, TEMP_SIZE);

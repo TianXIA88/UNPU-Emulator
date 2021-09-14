@@ -1469,7 +1469,6 @@ static int write_lut_ctrl(CPURISCVState *env, int csrno, target_ulong val){
     if(val&0x1)
         lut_ptr = 0;
     else{
-        npu_log("CSR WRITE ERROR\n\r");
         exit(-1);
     }
     return 0;

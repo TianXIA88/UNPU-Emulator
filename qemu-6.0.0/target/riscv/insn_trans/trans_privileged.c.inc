@@ -117,6 +117,21 @@ static bool trans_wfi(DisasContext *ctx, arg_wfi *a)
 #endif
 }
 
+static bool trans_barrier(DisasContext *ctx, arg_barrier *a) //for barrier
+{
+#ifndef CONFIG_USER_ONLY
+    TCGv_i32 rs;
+    rs = tcg_temp_new_i32();
+    // tcg_gen_movi_tl(cpu_pc, ctx->pc_succ_insn); // to edit
+    tcg_gen_mov_i32(rs, cpu_gpr[a->rs1]);
+    // rs = tcg_const_i32(a->rs1);
+    gen_helper_barrier(cpu_env, rs);
+    return true;
+#else
+    return false;
+#endif
+}
+
 static bool trans_sfence_vma(DisasContext *ctx, arg_sfence_vma *a)
 {
 #ifndef CONFIG_USER_ONLY

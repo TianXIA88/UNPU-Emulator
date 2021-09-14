@@ -200,6 +200,7 @@ cpu_tb_exec(CPUState *cpu, TranslationBlock *itb, int *tb_exit)
     last_tb = tcg_splitwx_to_rw((void *)(ret & ~TB_EXIT_MASK));
     *tb_exit = ret & TB_EXIT_MASK;
 
+
     trace_exec_tb_exit(last_tb, *tb_exit);
 
     if (*tb_exit > TB_EXIT_IDX1) {
@@ -420,7 +421,6 @@ static inline TranslationBlock *tb_find(CPUState *cpu,
     TranslationBlock *tb;
     target_ulong cs_base, pc;
     uint32_t flags;
-
     cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
 
     tb = tb_lookup(cpu, pc, cs_base, flags, cflags);
@@ -469,6 +469,29 @@ static inline bool cpu_handle_halt(CPUState *cpu)
     return false;
 }
 
+static inline bool cpu_handle_barrier(CPUState *cpu) //for barrier
+{
+    if (cpu->wait_for_barrier) {
+#if defined(TARGET_I386) && !defined(CONFIG_USER_ONLY)
+        if ((cpu->interrupt_request & CPU_INTERRUPT_POLL)
+            && replay_interrupt()) {
+            X86CPU *x86_cpu = X86_CPU(cpu);
+            qemu_mutex_lock_iothread();
+            apic_poll_irq(x86_cpu->apic_state);
+            cpu_reset_interrupt(cpu, CPU_INTERRUPT_POLL);
+            qemu_mutex_unlock_iothread();
+        }
+#endif
+        // if (!cpu_has_work(cpu)) {
+        //     return true;
+        // }
+
+        cpu->wait_for_barrier = 0;
+    }
+
+    return false;
+}
+
 static inline void cpu_handle_debug_exception(CPUState *cpu)
 {
     CPUClass *cc = CPU_GET_CLASS(cpu);
@@ -487,7 +510,7 @@ static inline void cpu_handle_debug_exception(CPUState *cpu)
 
 static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
 {
-    // npu_log("cpu_handle_exception: exception_index=%d\n\r", cpu->exception_index);
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     if (cpu->exception_index < 0) {
 #ifndef CONFIG_USER_ONLY
         if (replay_has_exception()
@@ -496,6 +519,7 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
             cpu->cflags_next_tb = (curr_cflags(cpu) & ~CF_USE_ICOUNT) | 1;
         }
 #endif
+        
         return false;
     }
     if (cpu->exception_index >= EXCP_INTERRUPT) {
@@ -520,7 +544,6 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
         return true;
 #else
         if (replay_exception()) {
-            // npu_log("cpu_handle_exception: replay_exception\n\r");
             CPUClass *cc = CPU_GET_CLASS(cpu);
             qemu_mutex_lock_iothread();
             cc->tcg_ops->do_interrupt(cpu);
@@ -565,7 +588,6 @@ static inline bool need_replay_interrupt(int interrupt_request)
 static inline bool cpu_handle_interrupt(CPUState *cpu,
                                         TranslationBlock **last_tb)
 {
-    // npu_log("cpu_handle_interrupt\n\r");
     CPUClass *cc = CPU_GET_CLASS(cpu);
 
     /* Clear the interrupt flag now since we're processing
@@ -578,7 +600,6 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
     if (unlikely(qatomic_read(&cpu->interrupt_request))) {
         RISCVCPU *cpulog = RISCV_CPU(cpu);
         CPURISCVState *envlog = &cpulog->env;
-        // npu_log("cpu_handle_interrupt: REAL IRQ (pc=%x)\n\r", envlog->pc);
         // exit(-1);
         int interrupt_request;
         qemu_mutex_lock_iothread();
@@ -627,7 +648,6 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
            True when it is, and we should restart on a new TB,
            and via longjmp via cpu_loop_exit.  */
         else {
-            // npu_log("cpu_handle_interrupt: The target hook\n\r");
             if (cc->tcg_ops->cpu_exec_interrupt &&
                 cc->tcg_ops->cpu_exec_interrupt(cpu, interrupt_request)) {
                 if (need_replay_interrupt(interrupt_request)) {
@@ -666,7 +686,6 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
         if (cpu->exception_index == -1) {
             cpu->exception_index = EXCP_INTERRUPT;
         }
-        // npu_log("cpu_handle_interrupt: exit to the main loop\n\r");
         return true;
     }
 
@@ -678,12 +697,9 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 {
     int32_t insns_left;
 
-    // npu_log("cpu_loop_exec_tb: PC=%lx (Thread %d)\n\r", tb->pc, cpu->thread_id);
     trace_exec_tb(tb, tb->pc);
     tb = cpu_tb_exec(cpu, tb, tb_exit);
     RISCVCPU *cpulog = RISCV_CPU(cpu);
-    CPURISCVState *envlog = &cpulog->env;
-    // npu_log("exit cause=%lx (pc=%x)\n\r", *tb_exit, envlog->pc);
     if (*tb_exit != TB_EXIT_REQUESTED) {
         *last_tb = tb;
         return;
@@ -727,7 +743,6 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 
 int cpu_exec(CPUState *cpu)
 {
-    // npu_log("cpu_exec: main execution loop: thread=%d\n\r", cpu->thread_id);
     CPUClass *cc = CPU_GET_CLASS(cpu);
     int ret;
     SyncClocks sc = { 0 };
@@ -737,6 +752,10 @@ int cpu_exec(CPUState *cpu)
 
     if (cpu_handle_halt(cpu)) {
         return EXCP_HALTED;
+    }
+
+    if(cpu_handle_barrier(cpu)) {
+        return EXCP_BARRIERD;
     }
 
     rcu_read_lock();
@@ -788,7 +807,7 @@ int cpu_exec(CPUState *cpu)
         assert_no_pages_locked();
     }
 
-    // npu_log("=======while loop========\n\r");
+    // npu_log("=======while loop[%d]========\n\r", cpu->thread_id);
 
     /* if an exception is pending, we execute it here */
     while (!cpu_handle_exception(cpu, &ret)) {
@@ -810,7 +829,8 @@ int cpu_exec(CPUState *cpu)
                 cpu->cflags_next_tb = -1;
             }
 
-            tb = tb_find(cpu, last_tb, tb_exit, cflags);
+            CPUArchState *env = (CPUArchState *)cpu->env_ptr;
+            tb =  tb_find(cpu, last_tb, tb_exit, cflags);
             cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit);
             /* Try to align the host and virtual clocks
                if the guest is in advance */

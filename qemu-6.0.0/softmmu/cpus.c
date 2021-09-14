@@ -64,6 +64,9 @@
 #endif /* CONFIG_LINUX */
 
 static QemuMutex qemu_global_mutex;
+static QemuMutex qemu_barrier_mutex[BARRIER_NUM]; // for barrier
+
+Barrier barrier[BARRIER_NUM]; //for barrier
 
 bool cpu_is_stopped(CPUState *cpu)
 {
@@ -243,8 +246,8 @@ static void generic_handle_interrupt(CPUState *cpu, int mask)
 
 void cpu_interrupt(CPUState *cpu, int mask)
 {
+
     if (cpus_accel->handle_interrupt) {
-        // npu_log("cpu_interrupt\n\r");
         cpus_accel->handle_interrupt(cpu, mask);
     } else {
         generic_handle_interrupt(cpu, mask);
@@ -377,6 +380,8 @@ void qemu_init_cpu_loop(void)
     qemu_cond_init(&qemu_cpu_cond);
     qemu_cond_init(&qemu_pause_cond);
     qemu_mutex_init(&qemu_global_mutex);
+    for(int i = 0; i < BARRIER_NUM; i++)
+        qemu_mutex_init(&qemu_barrier_mutex[i]); // for barrier
 
     qemu_thread_get_self(&io_thread);
 }
@@ -405,9 +410,10 @@ void qemu_wait_io_event_common(CPUState *cpu)
     }
     process_queued_cpu_work(cpu);
 }
-
+int i=0;
 void qemu_wait_io_event(CPUState *cpu)
 {
+    CPUArchState *env = (CPUArchState *)cpu->env_ptr;
     bool slept = false;
 
     while (cpu_thread_is_idle(cpu)) {
@@ -417,6 +423,50 @@ void qemu_wait_io_event(CPUState *cpu)
         }
         qemu_cond_wait(cpu->halt_cond, &qemu_global_mutex);
     }
+
+
+    if (cpu->wait_for_barrier) { // for barrier
+        i++;
+        if(barrier[cpu->barrier_id].initialized == 0){
+            // npu_log("(Huang)[%d]: fisrt core comes to barrier, sync_count = %d, counter = %d\n\r", cpu->thread_id, cpu->sync_count, barrier[cpu->barrier_id].counter);
+            qemu_mutex_lock_barrier(cpu->barrier_id);
+            barrier[cpu->barrier_id].initialized = 1;
+            barrier[cpu->barrier_id].counter = cpu->sync_count;
+            barrier[cpu->barrier_id].sync_count = cpu->sync_count;
+            qemu_mutex_unlock_barrier(cpu->barrier_id);
+        }else{
+            // npu_log("(Huang)[%d]: other cores come to barrier, counter = %d\n\r", cpu->thread_id, barrier[cpu->barrier_id].counter);
+            if(cpu->sync_count != barrier[cpu->barrier_id].sync_count){ //exit
+
+            }
+            qemu_mutex_lock_barrier(cpu->barrier_id);
+            barrier[cpu->barrier_id].counter --;
+            qemu_mutex_unlock_barrier(cpu->barrier_id);
+        }
+        // npu_log("(Huang)[%d]: before cond or kick, sync_count = %d, counter = %d\n\r", cpu->thread_id, cpu->sync_count, barrier[cpu->barrier_id].counter);
+        barrier[cpu->barrier_id].core[cpu->hart_id] = 1;//try
+        if(barrier[cpu->barrier_id].counter == 0){
+            qemu_cpu_kick_all_cpu_barrier(cpu->barrier_id);
+            clear_barrier_state(cpu->barrier_id);
+            // cpu->exception_index = 0;// wake thread.
+        }
+        else{
+            qemu_mutex_lock_barrier(cpu->barrier_id);
+            // barrier[cpu->barrier_id].core[cpu->hart_id] = 1;
+            qemu_mutex_unlock_barrier(cpu->barrier_id);
+            // npu_log("(Huang)[%d]: qemu_barrier_cond_wait [ENTER]\n\r", cpu->thread_id);
+            qemu_cond_wait(cpu->barrier_cond, &qemu_global_mutex);
+            clear_barrier_state_self(cpu->barrier_id, cpu->hart_id);
+
+            // npu_log("(Huang)[%d]: qemu_barrier_cond_wait [EXIT]\n\r", cpu->thread_id);
+        }
+        env->pc += 4;
+        // cpu->from_barrier = 1;
+        // cpu->wait_for_barrier = 0; //try;
+        // if(i>5)
+        //     while(1);
+    }
+    
     if (slept) {
         qemu_plugin_vcpu_resume_cb(cpu);
     }
@@ -449,12 +499,67 @@ void cpus_kick_thread(CPUState *cpu)
 
 void qemu_cpu_kick(CPUState *cpu)
 {
+    // printf("qemu_cpu_kick\n\r");
     qemu_cond_broadcast(cpu->halt_cond);
     if (cpus_accel->kick_vcpu_thread) {
         cpus_accel->kick_vcpu_thread(cpu);
     } else { /* default */
         cpus_kick_thread(cpu);
     }
+}
+
+void qemu_cpu_kick_one_cpu_barrier(CPUState *cpu)   //for barrier
+{
+    printf("(Huang)qemu_cpu_kick_one_cpu_barrier: [%d]\n\r", cpu->thread_id);
+    // while(1){;;}
+    qemu_cond_broadcast(cpu->barrier_cond);
+    if (cpus_accel->kick_vcpu_thread) {
+        cpus_accel->kick_vcpu_thread(cpu);
+    } else { /* default */
+        cpus_kick_thread(cpu);
+    }
+    
+}
+
+void qemu_cpu_kick_all_cpu_barrier(uint32_t barrier_id) // for barrier. kick all cpus except self
+{
+    printf("(Huang)qemu_cpu_kick_all_cpu_barrier\n\r");
+
+    for(int i = 0; i < CORE_NUM; i++)
+    {
+        if(barrier[barrier_id].core[i] == 1)
+        {
+            CPUState *cs = qemu_get_cpu(i);
+            bool locked = false;
+            if (!qemu_mutex_iothread_locked()) {
+                locked = true;
+                qemu_mutex_lock_iothread();
+            }
+            g_assert(qemu_mutex_iothread_locked());
+            if(!qemu_cpu_is_self(cs))//try
+                qemu_cpu_kick_one_cpu_barrier(cs);
+
+            if (locked) {
+                qemu_mutex_unlock_iothread();
+            }
+        }
+    }
+}
+
+void clear_barrier_state(uint32_t barrier_id) // for barrier
+{
+    qemu_mutex_lock_barrier(barrier_id);
+    barrier[barrier_id].counter = 0;
+    barrier[barrier_id].initialized = 0;
+    barrier[barrier_id].sync_count = 0;
+    qemu_mutex_unlock_barrier(barrier_id);
+}
+
+void clear_barrier_state_self(uint32_t barrier_id, uint32_t hart_id) // for barrier
+{
+    qemu_mutex_lock_barrier(barrier_id);
+    barrier[barrier_id].core[hart_id] = 0;
+    qemu_mutex_unlock_barrier(barrier_id);
 }
 
 void qemu_cpu_kick_self(void)
@@ -474,10 +579,16 @@ bool qemu_in_vcpu_thread(void)
 }
 
 static __thread bool iothread_locked = false;
+static __thread bool barrier_locked[BARRIER_NUM] = {false}; // for barrier
 
 bool qemu_mutex_iothread_locked(void)
 {
     return iothread_locked;
+}
+
+bool qemu_mutex_barrier_locked(int barrier_id) //for barrier
+{
+    return barrier_locked[barrier_id];
 }
 
 /*
@@ -503,6 +614,22 @@ void qemu_mutex_unlock_iothread(void)
 void qemu_cond_wait_iothread(QemuCond *cond)
 {
     qemu_cond_wait(cond, &qemu_global_mutex);
+}
+
+void qemu_mutex_lock_barrier_impl(int barrier_id, const char *file, int line) // for barrier
+{
+    QemuMutexLockFunc lock_func = qatomic_read(&qemu_mutex_lock_func);
+
+    g_assert(!qemu_mutex_barrier_locked(barrier_id));
+    lock_func(&qemu_barrier_mutex[barrier_id], file, line);
+    barrier_locked[barrier_id] = true;
+}
+
+void qemu_mutex_unlock_barrier(int barrier_id) // for barrier
+{
+    g_assert(qemu_mutex_barrier_locked(barrier_id));
+    barrier_locked[barrier_id] = false;
+    qemu_mutex_unlock(&qemu_barrier_mutex[barrier_id]);
 }
 
 void qemu_cond_timedwait_iothread(QemuCond *cond, int ms)

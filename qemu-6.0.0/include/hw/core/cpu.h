@@ -32,6 +32,9 @@
 #include "qemu/plugin.h"
 #include "qom/object.h"
 
+#define BARRIER_NUM 16 //for barrier
+#define CORE_NUM 8
+
 typedef int (*WriteCoreDumpFunction)(const void *buf, size_t size,
                                      void *opaque);
 
@@ -341,6 +344,7 @@ struct CPUState {
     int thread_id;
     bool running, has_waiter;
     struct QemuCond *halt_cond;
+    struct QemuCond *barrier_cond; // for barrier
     bool thread_kicked;
     bool created;
     bool stop;
@@ -353,6 +357,11 @@ struct CPUState {
     bool crash_occurred;
     bool exit_request;
     bool in_exclusive_context;
+    bool wait_for_barrier; // for barrier
+    bool from_barrier; // for barrier
+    uint32_t barrier_id; // for barrier
+    uint32_t sync_count; // for barrier
+    uint32_t hart_id; // for barrier
     uint32_t cflags_next_tb;
     /* updates protected by BQL */
     uint32_t interrupt_request;
@@ -434,6 +443,13 @@ struct CPUState {
 
     /* track IOMMUs whose translations we've cached in the TCG TLB */
     GArray *iommu_notifiers;
+};
+
+struct Barrier{ // for barrier
+    bool initialized; // initialized :1 = has been activated
+    int sync_count;
+    int counter;
+    bool core[CORE_NUM];
 };
 
 typedef QTAILQ_HEAD(CPUTailQ, CPUState) CPUTailQ;
@@ -968,6 +984,12 @@ static inline bool cpu_breakpoint_test(CPUState *cpu, vaddr pc, int mask)
     }
     return false;
 }
+
+void qemu_cpu_kick_one_cpu_barrier(CPUState *cpu);   //for barrier
+void qemu_cpu_kick_all_cpu_barrier(uint32_t barrier_id); // for barrier. kick all cpus except self
+void clear_barrier_state(uint32_t barrier_id); // for barrier
+void clear_barrier_state_self(uint32_t barrier_id, uint32_t hart_id); // for barrier
+
 
 #ifdef CONFIG_USER_ONLY
 static inline int cpu_watchpoint_insert(CPUState *cpu, vaddr addr, vaddr len,

@@ -2657,6 +2657,7 @@ void tcg_gen_extr32_i64(TCGv_i64 lo, TCGv_i64 hi, TCGv_i64 arg)
 
 void tcg_gen_exit_tb(const TranslationBlock *tb, unsigned idx)
 {
+    // npu_log("tcg_gen_exit_tb\n\r");
     /*
      * Let the jit code return the read-only version of the
      * TranslationBlock, so that we minimize the pc-relative

@@ -86,6 +86,10 @@ static void *mttcg_cpu_thread_fn(void *arg)
                  */
                 g_assert(cpu->halted);
                 break;
+            case EXCP_BARRIERD:
+                npu_log("EXCP_BARRIER\n\r");
+                g_assert(cpu->wait_for_barrier);
+                break;
             case EXCP_ATOMIC:
                 qemu_mutex_unlock_iothread();
                 cpu_exec_step_atomic(cpu);
@@ -119,8 +123,10 @@ void mttcg_start_vcpu_thread(CPUState *cpu)
     tcg_cpu_init_cflags(cpu, current_machine->smp.max_cpus > 1);
 
     cpu->thread = g_malloc0(sizeof(QemuThread));
-    cpu->halt_cond = g_malloc0(sizeof(QemuCond));
-    qemu_cond_init(cpu->halt_cond);
+    cpu->halt_cond = g_malloc0(sizeof(QemuCond));//for barrier
+    cpu->barrier_cond = g_malloc0(sizeof(QemuCond));
+    qemu_cond_init(cpu->halt_cond); 
+    qemu_cond_init(cpu->barrier_cond); //for barrier
 
     /* create a thread per vCPU with TCG (MTTCG) */
     snprintf(thread_name, VCPU_THREAD_NAME_SIZE, "CPU %d/TCG",
