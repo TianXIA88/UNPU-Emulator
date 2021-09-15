@@ -159,7 +159,7 @@ int main(int argc, char **argv)
         // barrier test
         asm volatile("lui x5, 0x01"); // sync_count=1. 2cores.
         
-        asm volatile("addi x5, x5, 1"); // barrier_id: 0. 
+        asm volatile("addi x5, x5, 1"); // barrier_id: 1. 
         
         int i;
         for(i=0;i<1000000000;i++);

@@ -437,7 +437,8 @@ void qemu_wait_io_event(CPUState *cpu)
         }else{
             // npu_log("(Huang)[%d]: other cores come to barrier, counter = %d\n\r", cpu->thread_id, barrier[cpu->barrier_id].counter);
             if(cpu->sync_count != barrier[cpu->barrier_id].sync_count){ //exit
-
+                npu_log("sync_count error!\n\r");
+                exit(-1);
             }
             qemu_mutex_lock_barrier(cpu->barrier_id);
             barrier[cpu->barrier_id].counter --;
@@ -448,6 +449,7 @@ void qemu_wait_io_event(CPUState *cpu)
         if(barrier[cpu->barrier_id].counter == 0){
             qemu_cpu_kick_all_cpu_barrier(cpu->barrier_id);
             clear_barrier_state(cpu->barrier_id);
+            clear_barrier_state_self(cpu->barrier_id, cpu->hart_id);
             // cpu->exception_index = 0;// wake thread.
         }
         else{

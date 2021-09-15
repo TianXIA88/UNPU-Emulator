@@ -178,7 +178,7 @@ int main(int argc, char **argv)
 
         // barrier test
         asm volatile("lui x5, 0x01"); // sync_count=1. 2cores.
-        asm volatile("addi x5, x5, 1"); // barrier_id: 0. 
+        asm volatile("addi x5, x5, 1"); // barrier_id: 1. 
         int rs2;
         asm volatile("mv %0, x5":"+r"(rs2)::);
         // printf("rs2 = %x\n\r", rs2);
