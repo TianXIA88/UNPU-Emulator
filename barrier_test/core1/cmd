@@ -1,1 +1,0 @@
-/home/xiatian/Work/hipu_qemu/qemu/bin/qemu-system-riscv32 -machine sifive_e -nographic -kernel build/bin/rv32ima/qemu-sifive_e/hello.elf
