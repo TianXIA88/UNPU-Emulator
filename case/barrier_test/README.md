@@ -1,8 +1,11 @@
 # bootloader
 
 ## How to use
-To run multicore, enter the command:
+To run the first case(core0 and core1 use barrier[0] to achieve synchronization), enter the command:
 >$YOUR_QEMU_PATH/bin/qemu-system-riscv32 -nographic -machine sifive_u -smp 2 -m 2G -device loader,file=$YOUR_FISRT_ELF_FOR_CORE0,addr=0x8fffff00,force-raw=on  -device loader,addr=0x90000000,cpu-num=0  -device loader,file=$YOUR_SECOND_ELF_FOR_CORE1,addr=0x9fffff00,force-raw=on  -device loader,addr=0xa0000000,cpu-num=1
+
+To run the second case(core0 and core1 use barrier[0] to achieve synchronization while core2 and core3 use barrier[1]), enter the command:
+>$YOUR_QEMU_PATH/bin/qemu-system-riscv32 -nographic -machine sifive_u -smp 4 -m 2G -device loader,file=$YOUR_FISRT_ELF_FOR_CORE0,addr=0x8fffff00,force-raw=on  -device loader,addr=0x90000000,cpu-num=0  -device loader,file=$YOUR_SECOND_ELF_FOR_CORE1,addr=0x9fffff00,force-raw=on  -device loader,addr=0xa0000000,cpu-num=1  -device loader,file=$YOUR_THIRD_ELF_FOR_CORE2,addr=0xafffff00,force-raw=on  -device loader,addr=0xb0000000,cpu-num=2 -device loader,file=$YOUR_FOURTH_ELF_FOR_CORE0,addr=0xbfffff00,force-raw=on  -device loader,addr=0xc0000000,cpu-num=3
 
 In this command, the addr loaded into the file is **0x100** smaller than the PC run by the real CPU. This is caused by the header file information of elf.
 
